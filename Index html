@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pergaminho AR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root{
+  --bg:#E7E5E0; --surface:#F6F4EF; --ink:#1B2233; --muted:#5A6275;
+  --line:#CBC6BB; --accent:#1F7FA8; --accent-ink:#ffffff; --seal:#B8322A;
+  --serif:"Shippori Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  --sans:"Zen Kaku Gothic New", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111726; --surface:#1A2236; --ink:#E8E4DA; --muted:#A3ABBE;
+    --line:#2E3850; --accent:#6FD0EE; --accent-ink:#0E1422; --seal:#E0574C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111726; --surface:#1A2236; --ink:#E8E4DA; --muted:#A3ABBE;
+  --line:#2E3850; --accent:#6FD0EE; --accent-ink:#0E1422; --seal:#E0574C;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+img{max-width:100%}
+
+.wrap{max-width:640px;margin:0 auto;padding:28px 20px 120px}
+.mast{display:flex;align-items:flex-end;gap:14px;margin-bottom:6px}
+.mast h1{font-family:var(--serif);font-weight:800;font-size:44px;line-height:1;margin:0;letter-spacing:-.01em}
+.mast .kanji{font-family:var(--serif);font-weight:800;font-size:44px;line-height:1;color:var(--seal);writing-mode:vertical-rl}
+.lede{color:var(--muted);margin:10px 0 26px;max-width:46ch}
+
+.deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.card img{width:100%;aspect-ratio:63/88;object-fit:cover;border-radius:6px;display:block;background:var(--line)}
+.card .nm{font-family:var(--serif);font-weight:600;font-size:17px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .el{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.add{border-style:dashed;align-items:center;justify-content:center;min-height:200px;color:var(--muted);background:transparent}
+.add span{font-size:40px;line-height:1;font-family:var(--serif)}
+
+.empty{border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-family:var(--serif);font-size:22px;margin-bottom:6px}
+
+.dock{position:fixed;left:0;right:0;bottom:0;padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);display:flex;justify-content:center}
+.btn{border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.big{width:100%;max-width:600px;font-size:18px;padding:17px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--seal);border:1px solid var(--seal)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:16px;width:min(560px,94vw);max-height:92vh}
+dialog::backdrop{background:rgba(8,12,22,.6)}
+.sheet{padding:20px;display:flex;flex-direction:column;gap:14px;overflow:auto;max-height:92vh}
+.sheet h2{font-family:var(--serif);margin:0;font-size:26px}
+.photo{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+.photo .pv{width:110px;aspect-ratio:63/88;border-radius:8px;border:1px dashed var(--line);background:var(--bg) center/cover no-repeat;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center}
+.photo p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:500}
+input[type=text],input[type=number],textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+textarea{resize:vertical;min-height:64px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.els{display:flex;flex-wrap:wrap;gap:8px}
+.els input{position:absolute;opacity:0;pointer-events:none}
+.els label{flex-direction:row;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:7px 12px;cursor:pointer;font-weight:500}
+.els input:checked + label{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.els input:focus-visible + label{outline:3px solid var(--accent);outline-offset:2px}
+.actions{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:4px}
+.actions .r{display:flex;gap:10px;margin-left:auto}
+
+/* AR */
+#arView{position:fixed;inset:0;background:#000;display:none;z-index:20}
+#arView.on{display:block}
+#arStage{position:absolute;inset:0;overflow:hidden}
+.hud{position:absolute;left:0;right:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 14px;pointer-events:none}
+.hud.top{top:0;padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.hud.bottom{bottom:0;justify-content:center;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.hud > *{pointer-events:auto}
+.chip{background:rgba(10,14,24,.72);color:#EDEAE2;border-radius:999px;padding:9px 16px;font-size:15px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.chip.found{background:rgba(31,127,168,.85)}
+.back{border:0;background:rgba(10,14,24,.72);color:#EDEAE2;border-radius:999px;padding:9px 16px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.overlay{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:24px;background:rgba(8,12,22,.86);color:#EDEAE2;text-align:center}
+.overlay .box{max-width:34ch}
+.overlay h3{font-family:var(--serif);font-size:26px;margin:0 0 8px}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:16px}
+.bar i{display:block;height:100%;width:0;background:#6FD0EE;transition:width .2s}
+.overlay .btn{margin-top:18px}
+@media (prefers-reduced-motion: reduce){ .bar i{transition:none} }
+</style>
+</head>
+<body>
+
+<main class="wrap" id="home">
+  <div class="mast"><h1>Pergaminho AR</h1><span class="kanji" aria-hidden="true">巻</span></div>
+  <p class="lede">Cadastre suas cartas com uma foto. Depois abra a câmera, aponte para a carta e os dados dela surgem por cima.</p>
+  <section id="deck" class="deck" aria-label="Cartas cadastradas"></section>
+</main>
+
+<div class="dock"><button class="btn big" id="openCam">Abrir câmera</button></div>
+
+<dialog id="editor" aria-labelledby="edTitle">
+  <form class="sheet" id="edForm" method="dialog">
+    <h2 id="edTitle">Nova carta</h2>
+    <div class="photo">
+      <div class="pv" id="pv">Sem foto</div>
+      <div>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;justify-content:center" for="file">Tirar ou escolher foto</label>
+        <input id="file" type="file" accept="image/*" capture="environment" hidden>
+        <p>Foto de frente, com a carta preenchendo a imagem e sem reflexo.</p>
+      </div>
+    </div>
+    <label>Nome<input type="text" id="fName" maxlength="40" required placeholder="Nome do personagem"></label>
+    <div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:6px">Elemento</div>
+      <div class="els" id="els"></div>
+    </div>
+    <div class="row3">
+      <label>Ataque<input type="number" id="fAtk" min="0" max="99999" inputmode="numeric"></label>
+      <label>Defesa<input type="number" id="fDef" min="0" max="99999" inputmode="numeric"></label>
+      <label>Chakra<input type="number" id="fChk" min="0" max="99999" inputmode="numeric"></label>
+    </div>
+    <label>Jutsu ou habilidade<input type="text" id="fJutsu" maxlength="50"></label>
+    <label>Notas<textarea id="fNotes" maxlength="160"></textarea></label>
+    <div class="actions">
+      <button type="button" class="btn danger" id="del" hidden>Excluir</button>
+      <div class="r">
+        <button type="button" class="btn ghost" id="cancel">Cancelar</button>
+        <button type="submit" class="btn" id="save">Salvar carta</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<section id="arView" aria-label="Câmera">
+  <div id="arStage"></div>
+  <div class="hud top"><button class="back" id="arBack">Voltar</button><span class="chip" id="arChip" role="status">Iniciando…</span></div>
+  <div class="hud bottom"><span class="chip" id="arTip" hidden>Aproxime a carta e evite reflexo de luz</span></div>
+  <div class="overlay" id="arOverlay"><div class="box">
+    <h3 id="ovTitle">Preparando as cartas</h3>
+    <p id="ovText">Estou aprendendo a reconhecer cada carta. Isso só acontece quando você adiciona ou muda uma foto.</p>
+    <div class="bar" id="ovBar"><i></i></div>
+    <button class="btn" id="ovBtn" hidden>Voltar</button>
+  </div></div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+
+const ELEMENTS = [
+  {id:'fogo',  name:'Fogo',  kanji:'火', color:'#FF7A3D'},
+  {id:'agua',  name:'Água',  kanji:'水', color:'#4FB6FF'},
+  {id:'vento', name:'Vento', kanji:'風', color:'#7CE3B0'},
+  {id:'raio',  name:'Raio',  kanji:'雷', color:'#F4E04D'},
+  {id:'terra', name:'Terra', kanji:'土', color:'#C99A5B'},
+  {id:'nenhum',name:'Nenhum',kanji:'忍', color:'#B7C3D6'},
+];
+const elOf = id => ELEMENTS.find(e=>e.id===id) || ELEMENTS[5];
+
+/* ---------- IndexedDB ---------- */
+let dbp;
+function db(){
+  if(!dbp) dbp = new Promise((res,rej)=>{
+    const r = indexedDB.open('pergaminho-ar',1);
+    r.onupgradeneeded = ()=>{ r.result.createObjectStore('cards',{keyPath:'id'}); r.result.createObjectStore('meta'); };
+    r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error);
+  });
+  return dbp;
+}
+async function tx(store, mode, fn){
+  const d = await db();
+  return new Promise((res,rej)=>{
+    const t = d.transaction(store,mode); const s = t.objectStore(store);
+    const out = fn(s); t.oncomplete = ()=>res(out && out.result !== undefined ? out.result : out); t.onerror = ()=>rej(t.error);
+  });
+}
+const allCards = async()=>{ try{ const c = await tx('cards','readonly',s=>s.getAll()); return (c||[]).sort((a,b)=>a.created-b.created);}catch{ return []; } };
+const putCard = c => tx('cards','readwrite',s=>s.put(c));
+const delCard = id => tx('cards','readwrite',s=>s.delete(id));
+const getMeta = async k => { try{ return await tx('meta','readonly',s=>s.get(k)); }catch{ return null; } };
+const setMeta = (k,v) => tx('meta','readwrite',s=>s.put(v,k)).catch(()=>{});
+
+/* ---------- Home ---------- */
+const deckEl = document.getElementById('deck');
+let cards = [];
+async function renderDeck(){
+  cards = await allCards();
+  deckEl.innerHTML = '';
+  if(!cards.length){
+    deckEl.style.display='block';
+    deckEl.innerHTML = `<div class="empty"><b>Nenhuma carta ainda</b>Adicione a primeira carta para começar a testar na câmera.<br><br><button class="btn" id="firstAdd">Adicionar carta</button></div>`;
+    document.getElementById('firstAdd').onclick = ()=>openEditor();
+  } else {
+    deckEl.style.display='';
+    for(const c of cards){
+      const e = elOf(c.element);
+      const b = document.createElement('button'); b.className='card'; b.type='button';
+      b.innerHTML = `<img alt="" src="${c.image}"><span class="nm"></span><span class="el"><i class="dot" style="background:${e.color}"></i>${e.name}</span>`;
+      b.querySelector('.nm').textContent = c.name;
+      b.setAttribute('aria-label',`Editar ${c.name}`);
+      b.onclick = ()=>openEditor(c);
+      deckEl.appendChild(b);
+    }
+    const a = document.createElement('button'); a.className='card add'; a.type='button';
+    a.innerHTML = '<span aria-hidden="true">+</span>Adicionar carta'; a.onclick = ()=>openEditor();
+    deckEl.appendChild(a);
+  }
+  document.getElementById('openCam').disabled = !cards.length;
+}
+
+/* ---------- Editor ---------- */
+const dlg = document.getElementById('editor');
+const f = id => document.getElementById(id);
+const elsBox = f('els');
+ELEMENTS.forEach(e=>{
+  elsBox.insertAdjacentHTML('beforeend',`<input type="radio" name="el" id="el-${e.id}" value="${e.id}"><label for="el-${e.id}"><i class="dot" style="background:${e.color}"></i>${e.name}</label>`);
+});
+let editing = null, photo = null, photoAspect = 88/63;
+
+function openEditor(c){
+  editing = c || null; photo = c ? c.image : null; photoAspect = c ? c.aspect : 88/63;
+  f('edTitle').textContent = c ? 'Editar carta' : 'Nova carta';
+  f('fName').value = c?.name || ''; f('fAtk').value = c?.atk ?? ''; f('fDef').value = c?.def ?? ''; f('fChk').value = c?.chk ?? '';
+  f('fJutsu').value = c?.jutsu || ''; f('fNotes').value = c?.notes || '';
+  (document.getElementById('el-'+(c?.element||'nenhum'))).checked = true;
+  f('del').hidden = !c; showPreview();
+  dlg.showModal();
+}
+function showPreview(){
+  const pv = f('pv');
+  if(photo){ pv.style.backgroundImage = `url(${photo})`; pv.textContent=''; }
+  else { pv.style.backgroundImage=''; pv.textContent='Sem foto'; }
+}
+f('file').addEventListener('change', async e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image(); img.src = url; await img.decode();
+  const max = 640, s = Math.min(1, max/Math.max(img.width,img.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(img.width*s); cv.height = Math.round(img.height*s);
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  URL.revokeObjectURL(url);
+  photo = cv.toDataURL('image/jpeg',0.88); photoAspect = cv.height/cv.width; showPreview();
+  e.target.value='';
+});
+f('cancel').onclick = ()=>dlg.close();
+f('del').onclick = async ()=>{
+  if(!editing) return;
+  if(!confirm(`Excluir “${editing.name}”?`)) return;
+  await delCard(editing.id); dlg.close(); renderDeck();
+};
+f('edForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  if(!photo){ alert('Adicione uma foto da carta para a câmera conseguir reconhecer.'); return; }
+  const name = f('fName').value.trim(); if(!name){ f('fName').focus(); return; }
+  const num = v => v === '' ? null : Math.max(0, Number(v)||0);
+  const c = {
+    id: editing?.id || crypto.randomUUID(), created: editing?.created || Date.now(), updated: Date.now(),
+    image: photo, aspect: photoAspect, name,
+    element: (document.querySelector('input[name=el]:checked')||{}).value || 'nenhum',
+    atk: num(f('fAtk').value), def: num(f('fDef').value), chk: num(f('fChk').value),
+    jutsu: f('fJutsu').value.trim(), notes: f('fNotes').value.trim(),
+  };
+  try{ await putCard(c); }catch{ alert('Não foi possível salvar a carta neste navegador.'); return; }
+  dlg.close(); renderDeck();
+});
+
+/* ---------- Painel (textura) ---------- */
+function wrap(ctx, text, maxW){
+  const words = text.split(/\s+/); const lines=[]; let cur='';
+  for(const w of words){ const t = cur? cur+' '+w : w; if(ctx.measureText(t).width>maxW && cur){ lines.push(cur); cur=w; } else cur=t; }
+  if(cur) lines.push(cur); return lines;
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function panelTexture(c, maxes){
+  const W=512,H=680, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d'), e=elOf(c.element);
+  // papel
+  rr(x,8,8,W-16,H-16,26); x.fillStyle='rgba(241,235,220,0.96)'; x.fill();
+  x.lineWidth=6; x.strokeStyle=e.color; x.stroke();
+  // faixa do elemento
+  x.save(); rr(x,8,8,W-16,150,26); x.clip(); x.fillStyle=e.color; x.fillRect(8,8,W-16,150); x.restore();
+  x.fillStyle='rgba(20,26,40,.9)'; x.font='800 110px "Shippori Mincho", serif'; x.textBaseline='middle';
+  x.fillText(e.kanji, 34, 88);
+  x.font='500 30px "Zen Kaku Gothic New", sans-serif'; x.textAlign='right'; x.fillText(e.name, W-36, 88); x.textAlign='left';
+  // nome
+  x.fillStyle='#1B2233'; x.font='800 54px "Shippori Mincho", serif'; x.textBaseline='alphabetic';
+  let y=226; for(const l of wrap(x,c.name,W-72).slice(0,2)){ x.fillText(l,36,y); y+=60; }
+  // stats
+  const stats=[['Ataque',c.atk,maxes.atk],['Defesa',c.def,maxes.def],['Chakra',c.chk,maxes.chk]].filter(s=>s[1]!=null);
+  y+=8;
+  for(const [lab,val,mx] of stats){
+    x.font='500 26px "Zen Kaku Gothic New", sans-serif'; x.fillStyle='#4A5266'; x.fillText(lab,36,y);
+    x.font='700 34px "Zen Kaku Gothic New", sans-serif'; x.fillStyle='#1B2233'; x.textAlign='right'; x.fillText(String(val),W-36,y); x.textAlign='left';
+    rr(x,36,y+12,W-72,12,6); x.fillStyle='rgba(27,34,51,.12)'; x.fill();
+    rr(x,36,y+12,Math.max(12,(W-72)*Math.min(1,val/Math.max(1,mx))),12,6); x.fillStyle=e.color; x.fill();
+    x.strokeStyle='rgba(27,34,51,.35)'; x.lineWidth=1.5; x.stroke();
+    y+=74;
+  }
+  // jutsu e notas
+  if(c.jutsu){ x.font='700 30px "Shippori Mincho", serif'; x.fillStyle='#B8322A'; for(const l of wrap(x,'“'+c.jutsu+'”',W-72).slice(0,2)){ x.fillText(l,36,y); y+=38; } y+=6; }
+  if(c.notes){ x.font='400 24px "Zen Kaku Gothic New", sans-serif'; x.fillStyle='#4A5266'; for(const l of wrap(x,c.notes,W-72).slice(0,Math.max(0,Math.floor((H-40-y)/32)))){ x.fillText(l,36,y); y+=32; } }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy=4;
+  return {tex:t, aspect:H/W};
+}
+function dotTexture(){
+  const cv=document.createElement('canvas'); cv.width=cv.height=64; const x=cv.getContext('2d');
+  const g=x.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.35,'rgba(255,255,255,.7)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,64,64); return new THREE.CanvasTexture(cv);
+}
+
+/* ---------- AR ---------- */
+const arView=f('arView'), stage=f('arStage'), chip=f('arChip'), tip=f('arTip');
+const ov=f('arOverlay'), ovTitle=f('ovTitle'), ovText=f('ovText'), ovBar=f('ovBar'), ovFill=ovBar.querySelector('i'), ovBtn=f('ovBtn');
+const MINDAR = 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/';
+let session=null, tipTimer=null;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function showError(title, text){
+  ov.hidden=false; ovTitle.textContent=title; ovText.textContent=text; ovBar.hidden=true; ovBtn.hidden=false;
+}
+async function compileTargets(list){
+  const sig = list.map(c=>c.id+':'+c.updated).join('|');
+  const cached = await getMeta('targets');
+  if(cached && cached.sig===sig && cached.buf) return cached.buf;
+  const { Compiler } = await import(MINDAR+'mindar-image.prod.js');
+  const imgs = await Promise.all(list.map(c=>{ const i=new Image(); i.src=c.image; return i.decode().then(()=>i); }));
+  const comp = new Compiler();
+  await comp.compileImageTargets(imgs, p=>{ ovFill.style.width = Math.min(100,p).toFixed(0)+'%'; });
+  const data = comp.exportData();
+  const buf = data.buffer.slice(data.byteOffset, data.byteOffset+data.byteLength);
+  await setMeta('targets',{sig, buf});
+  return buf;
+}
+
+async function startAR(){
+  arView.classList.add('on'); document.body.style.overflow='hidden';
+  ov.hidden=false; ovBar.hidden=false; ovBtn.hidden=true; ovFill.style.width='0%';
+  ovTitle.textContent='Preparando as cartas';
+  ovText.textContent='Estou aprendendo a reconhecer cada carta. Isso só acontece quando você adiciona ou muda uma foto.';
+  chip.textContent='Iniciando…'; chip.classList.remove('found'); tip.hidden=true;
+
+  // permissão da câmera primeiro, para dar um erro claro
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    s.getTracks().forEach(t=>t.stop());
+  }catch(err){
+    showError('Câmera bloqueada','Permita o acesso à câmera para este site nas configurações do navegador e tente de novo. Se continuar, abra esta página direto no Chrome ou no Safari.');
+    return;
+  }
+
+  let buf;
+  try{ buf = await compileTargets(cards); }
+  catch(err){ console.error(err); showError('Não consegui preparar as cartas','Verifique a internet e tente de novo. Fotos muito escuras ou borradas também atrapalham.'); return; }
+
+  ovTitle.textContent='Abrindo a câmera'; ovText.textContent='Aponte para uma carta cadastrada.'; ovFill.style.width='100%';
+
+  try{
+    const mod = await import(MINDAR+'mindar-image-three.prod.js');
+    const { Controller } = await import(MINDAR+'mindar-image.prod.js');
+    if(!Controller.prototype.__patched){
+      const orig = Controller.prototype.addImageTargets;
+      Controller.prototype.addImageTargets = function(src){
+        return src instanceof ArrayBuffer ? Promise.resolve(this.addImageTargetsFromBuffer(src)) : orig.call(this,src);
+      };
+      Controller.prototype.__patched = true;
+    }
+    stage.innerHTML='';
+    const mind = new mod.MindARThree({ container:stage, imageTargetSrc:buf, maxTrack:2, uiLoading:'no', uiScanning:'no', uiError:'no', filterMinCF:0.0001, filterBeta:0.001 });
+    const {renderer, scene, camera} = mind;
+    const dot = dotTexture();
+    const maxes = { atk:Math.max(1,...cards.map(c=>c.atk||0)), def:Math.max(1,...cards.map(c=>c.def||0)), chk:Math.max(1,...cards.map(c=>c.chk||0)) };
+    const states = [];
+
+    cards.forEach((c,i)=>{
+      const anchor = mind.addAnchor(i), e = elOf(c.element), col = new THREE.Color(e.color);
+      const h = c.aspect || 1.4;
+      // moldura
+      const fw=1.06, fh=h+0.06;
+      const frameGeo = new THREE.BufferGeometry().setFromPoints([[-fw/2,-fh/2],[fw/2,-fh/2],[fw/2,fh/2],[-fw/2,fh/2]].map(p=>new THREE.Vector3(p[0],p[1],0)));
+      const frame = new THREE.LineLoop(frameGeo, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:.9}));
+      anchor.group.add(frame);
+      // brilho na carta
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.02,h+0.02), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+      anchor.group.add(glow);
+      // anel
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.48,0.53,64), new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, depthWrite:false}));
+      ring.position.z=0.01; anchor.group.add(ring);
+      // partículas
+      const N=70, pos=new Float32Array(N*3), seed=[];
+      for(let k=0;k<N;k++){ const side=Math.random(); let px,py;
+        if(side<.5){ px=(Math.random()-.5)*1.0; py=(Math.random()<.5?-1:1)*h/2; } else { px=(Math.random()<.5?-1:1)*.5; py=(Math.random()-.5)*h; }
+        pos[k*3]=px; pos[k*3+1]=py; seed.push({sp:.25+Math.random()*.45, ph:Math.random()}); }
+      const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      const pts=new THREE.Points(pg,new THREE.PointsMaterial({map:dot,color:col,size:.07,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+      pts.frustumCulled=false; anchor.group.add(pts);
+      // painel
+      const {tex, aspect} = panelTexture(c, maxes);
+      const pw=1.05, panel=new THREE.Mesh(new THREE.PlaneGeometry(pw,pw*aspect), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+      const holder=new THREE.Group(); holder.add(panel); anchor.group.add(holder);
+
+      const st={c, anchor, frame, glow, ring, pts, pos, seed, holder, panel, t0:0, h, on:false};
+      states.push(st);
+      anchor.onTargetFound=()=>{ st.t0=performance.now(); st.on=true; updateChip(); };
+      anchor.onTargetLost=()=>{ st.on=false; updateChip(); };
+    });
+
+    function updateChip(){
+      const vis = states.filter(s=>s.on);
+      if(vis.length){ chip.textContent = vis.map(s=>s.c.name).join(' e '); chip.classList.add('found'); tip.hidden=true; clearTimeout(tipTimer); }
+      else { chip.textContent='Procurando cartas…'; chip.classList.remove('found'); armTip(); }
+    }
+    function armTip(){ clearTimeout(tipTimer); tipTimer=setTimeout(()=>{ if(!states.some(s=>s.on)) tip.hidden=false; },7000); }
+
+    await mind.start();
+    session = {mind, renderer};
+    ov.hidden=true; chip.textContent='Procurando cartas…'; armTip();
+
+    const camPos = new THREE.Vector3(), ease = t=>1-Math.pow(1-t,3);
+    renderer.setAnimationLoop(()=>{
+      const now=performance.now(), time=now/1000;
+      camera.getWorldPosition(camPos);
+      for(const s of states){
+        if(!s.on) continue;
+        s.pts.material.size = 0.07 * s.anchor.group.matrixWorld.getMaxScaleOnAxis();
+        const r = reduce ? 1 : ease(Math.min(1,(now-s.t0)/750));
+        // painel surge saindo da carta
+        s.holder.position.set(0, 0, 0.05 + r*(0.55 + s.h*0.25));
+        s.holder.scale.setScalar(0.15 + 0.85*r);
+        s.panel.lookAt(camPos);
+        s.glow.material.opacity = (1-r)*0.6 + 0.08 + (reduce?0:Math.sin(time*3)*0.04);
+        s.frame.material.opacity = 0.55 + (reduce?0.3:0.35*Math.sin(time*4));
+        const rt = reduce ? .6 : ((time*0.6)%1);
+        s.ring.scale.setScalar(0.6 + rt*1.4); s.ring.material.opacity = (1-rt)*0.8*r;
+        if(!reduce){
+          for(let k=0;k<s.seed.length;k++){ const q=s.seed[k]; s.pos[k*3+2] = ((time*q.sp + q.ph)%1)*0.9; }
+          s.pts.geometry.attributes.position.needsUpdate=true;
+        }
+      }
+      renderer.render(scene,camera);
+    });
+  }catch(err){
+    console.error(err);
+    showError('A câmera não abriu','Feche outros apps que estejam usando a câmera e tente de novo. Se persistir, abra esta página direto no Chrome ou no Safari.');
+  }
+}
+
+function stopAR(){
+  clearTimeout(tipTimer);
+  if(session){ try{ session.renderer.setAnimationLoop(null); session.mind.stop(); }catch{} session=null; }
+  stage.innerHTML=''; arView.classList.remove('on'); document.body.style.overflow='';
+}
+
+f('openCam').onclick = async ()=>{
+  if(!cards.length) return;
+  await Promise.all([document.fonts.load('800 54px "Shippori Mincho"'), document.fonts.load('500 26px "Zen Kaku Gothic New"'), document.fonts.load('700 34px "Zen Kaku Gothic New"')]).catch(()=>{});
+  startAR();
+};
+f('arBack').onclick = stopAR; ovBtn.onclick = stopAR;
+
+renderDeck();
+</script>
+</body>
+</html>
